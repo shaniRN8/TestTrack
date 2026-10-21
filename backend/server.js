@@ -9,6 +9,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ---- MongoDB connection (cached; works locally and on Vercel) ----
+let connectionPromise = null;
+
+function connectDB() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  if (!connectionPromise) {
+    connectionPromise = mongoose
+      .connect(process.env.MONGODB_URI)
+      .then(() => console.log("MongoDB connected successfully"))
+      .catch((err) => {
+        connectionPromise = null;
+        throw err;
+      });
+  }
+  return connectionPromise;
+}
+
+// Make sure the database is connected before any route runs
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
+    res.status(500).json({ message: "Database connection failed" });
+  }
+});
+
 // Test API
 app.get("/", (req, res) => {
   res.json({
@@ -16,8 +44,6 @@ app.get("/", (req, res) => {
     status: "Running"
   });
 });
-
-
 
 app.post("/api/testcases", async (req, res) => {
   try {
@@ -202,23 +228,18 @@ app.delete("/api/testcases/:id", async (req, res) => {
   }
 });
 
-
-// Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
 
-async function startServer() {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-
-    console.log("MongoDB connected successfully");
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+// Only start a listener when run directly (local: npm run dev)
+if (require.main === module) {
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    })
+    .catch((error) => {
+      console.error("MongoDB connection failed:", error.message);
     });
-  } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
-  }
 }
 
-
-startServer();
+// Vercel uses this export
+module.exports = app;
