@@ -2,9 +2,9 @@ import { useEffect, useState, useMemo } from "react";
 import "./App.css";
 import ExecutionPieChart from "./components/ExecutionPieChart";
 
-const API_URL = "http://localhost:5000/api/testcases";
-const STATS_API_URL = "http://localhost:5000/api/testcases/stats";
-
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = `${BASE_URL}/api/testcases`;
+const STATS_API_URL = `${BASE_URL}/api/testcases/stats`;
 const INITIAL_FORM = {
   title: "",
   description: "",
